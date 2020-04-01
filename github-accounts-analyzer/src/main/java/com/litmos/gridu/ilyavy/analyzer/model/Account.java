@@ -6,11 +6,7 @@ public class Account {
 
     private String interval;
 
-    public Account() { }
-
-    public Account(String account, String interval) {
-        this.account = account;
-        this.interval = interval;
+    public Account() {
     }
 
     public String getAccount() {

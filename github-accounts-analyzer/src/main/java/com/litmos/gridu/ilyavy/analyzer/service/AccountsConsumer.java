@@ -22,7 +22,7 @@ public class AccountsConsumer {
 
     private static final Logger logger = LoggerFactory.getLogger(AccountsConsumer.class);
 
-    private KafkaConsumer<String, String> consumer;
+    private final KafkaConsumer<String, String> consumer;
 
     public AccountsConsumer(String bootstrapServers, String topic, String groupId) {
         Properties properties = new Properties();
@@ -42,7 +42,7 @@ public class AccountsConsumer {
         objectMapper.enable(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT);
 
         ConsumerRecords<String, String> records = consumer.poll(timeout);
-        for (ConsumerRecord<String, String> record : records){
+        for (ConsumerRecord<String, String> record : records) {
             logger.info("Partition: " + record.partition() + ", Offset:" + record.offset());
             logger.info("Key: " + record.key() + ", Value: " + record.value());
 

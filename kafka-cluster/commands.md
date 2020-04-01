@@ -12,4 +12,4 @@
 
 5. Create topics:  
 - `kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-accounts --partitions 3 --replication-factor 3`
-
+- `kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-commits --partitions 3 --replication-factor 3`

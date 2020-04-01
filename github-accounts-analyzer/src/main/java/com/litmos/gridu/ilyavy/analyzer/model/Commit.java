@@ -6,11 +6,13 @@ public class Commit {
 
     private String author;
 
-    private LocalDateTime dateTime;
+    private LocalDateTime dateTimeUtc;
 
     private String language;
 
     private String sha;
+
+    private String message;
 
     private String repositoryFullName;
 
@@ -23,12 +25,12 @@ public class Commit {
         this.author = author;
     }
 
-    public LocalDateTime getDateTime() {
-        return dateTime;
+    public LocalDateTime getDateTimeUtc() {
+        return dateTimeUtc;
     }
 
-    public void setDateTime(LocalDateTime dateTime) {
-        this.dateTime = dateTime;
+    public void setDateTimeUtc(LocalDateTime dateTimeUtc) {
+        this.dateTimeUtc = dateTimeUtc;
     }
 
     public String getLanguage() {
@@ -53,5 +55,13 @@ public class Commit {
 
     public void setRepositoryFullName(String repositoryFullName) {
         this.repositoryFullName = repositoryFullName;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }
