@@ -46,12 +46,12 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
                         Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueStoreBuilder);
 
-        KTable<String, Long> totalCommitsNumber = builder
+        KTable<String, String> totalCommitsNumber = builder
                 .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
                 .mapValues((key, value) -> {
                     Commit commit = null;
                     try {
-                        commit = objectMapper.readValue((String) value, Commit.class);
+                        commit = objectMapper.readValue(value, Commit.class);
                     } catch (Exception e) {
                         logger.warn("Cannot read the value - data may be malformed", e);
                     }
@@ -60,9 +60,10 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
                 .transform(DistinctCommitsTransformer::new, TRANSFORMER_STORE)
                 .selectKey((key, value) -> "total-commits-number")
                 .groupByKey()
-                .count(Materialized.as("TotalCommitsCounts"));
+                .count(Materialized.as("TotalCommitsCounts"))
+                .mapValues(value -> "total-commits-number   " + value);
 
-        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()));
+        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }
@@ -89,7 +90,7 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
         @Override
         public KeyValue<String, String> transform(String key, String value) {
             String res = store.putIfAbsent(key, value);
-            System.out.println("lookup result: " + res);
+            System.out.println("lookup result for key " + key + ": " + res);
             if (res != null) {
                 return null;
             }

@@ -49,8 +49,7 @@ public class CommittersCounter implements MetricsKafkaStream {
                         Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueStoreBuilder);
 
-        KTable<String, Long> totalCommitsNumber = builder.stream(inputTopic)
-                .peek((key, value) -> System.out.println("!!! " + key + value))
+        KTable<String, String> totalCommitsNumber = builder.stream(inputTopic)
                 .mapValues((key, value) -> {
                     Commit commit = null;
                     try {
@@ -61,15 +60,13 @@ public class CommittersCounter implements MetricsKafkaStream {
                     return commit != null ? commit.getAuthor() : null;
                 })
                 .selectKey((key, value) -> value)
-                .peek((key, value) -> System.out.println("!!!!! " + key + value))
                 .transform(DistinctCommittersTransformer::new, TRANSFORMER_STORE)
-                .peek((key, value) -> System.out.println("----->" + key + value))
                 .selectKey((key, value) -> "total_committers")
-                .peek((key, value) -> System.out.println("=====>" + key + value))
                 .groupByKey()
-                .count(Materialized.as("CommittersCount"));
+                .count(Materialized.as("CommittersCount"))
+                .mapValues(value -> "total_committers   " + value);
 
-        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.Long()));
+        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }
