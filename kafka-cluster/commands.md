@@ -11,5 +11,18 @@
 `kafka-server-start.sh kafka-cluster/server3.properties`
 
 5. Create topics:  
-- `kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-accounts --partitions 3 --replication-factor 3`
-- `kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-commits --partitions 3 --replication-factor 3`
+- github-accounts - accounts read from the file
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-accounts \
+ --partitions 3 --replication-factor 3
+```
+- github-commits - commits which are polled from Github using github-accounts
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-commits \
+--partitions 3 --replication-factor 3
+ ```
+- github-metrics-total-commits-number - total commits number analyzed
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --create \
+--topic github-metrics-total-commits-number --partitions 2 --replication-factor 3
+```
