@@ -4,5 +4,5 @@
 .idea
 *.iml
 target/
-src/test/target/
+commits-metrics-kafka-stream/src/test/target/
 .DS_Store
