@@ -7,19 +7,22 @@ import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.*;
 import org.apache.kafka.streams.kstream.*;
 import org.apache.kafka.streams.processor.ProcessorContext;
-import org.apache.kafka.streams.state.KeyValueStore;
-import org.apache.kafka.streams.state.StoreBuilder;
-import org.apache.kafka.streams.state.Stores;
+import org.apache.kafka.streams.state.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Properties;
 
-public class TotalCommitsCounter implements MetricsKafkaStream {
+public class TopCommitters implements MetricsKafkaStream {
 
-    private static final Logger logger = LoggerFactory.getLogger(TotalCommitsCounter.class);
+    private static final Logger logger = LoggerFactory.getLogger(TopCommitters.class);
 
-    private static final String TRANSFORMER_STORE = "distinct-commits";
+    private static final String TRANSFORMER_STORE = "distinct-commits-tc";
+
+    private static final String COMMITS_BY_AUTHOR_STORE = "CommitsByAuthor";
 
     private KafkaStreams streams;
 
@@ -27,11 +30,11 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
 
     private final String outputTopic;
 
-    public TotalCommitsCounter(Properties properties, String inputTopic, String outputTopic) {
+    public TopCommitters(Properties properties, String inputTopic, String outputTopic) {
         this.inputTopic = inputTopic;
         this.outputTopic = outputTopic;
 
-        properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "commits-metrics-total-commits-counter");
+        properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "commits-metrics-top-committers");
 
         streams = new KafkaStreams(createTopology(), properties);
     }
@@ -46,7 +49,7 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
                         Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueStoreBuilder);
 
-        KTable<String, String> totalCommitsNumber = builder
+        KStream<String, String> totalCommitsNumber = builder
                 .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
                 .mapValues((key, value) -> {
                     Commit commit = null;
@@ -58,12 +61,13 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
                     return commit != null ? commit.getAuthor() : null;
                 })
                 .transform(DistinctCommitsTransformer::new, TRANSFORMER_STORE)
-                .selectKey((key, value) -> "total-commits-number")
+                .selectKey((key, value) -> value)
                 .groupByKey()
-                .count(Materialized.as("TotalCommitsCounts"))
-                .mapValues(value -> "total-commits-number: " + value);
+                .count(Materialized.as(COMMITS_BY_AUTHOR_STORE))
+                .toStream()
+                .transform(TopCommittersTransformer::new, COMMITS_BY_AUTHOR_STORE);
 
-        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+        totalCommitsNumber.to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }
@@ -78,6 +82,46 @@ public class TotalCommitsCounter implements MetricsKafkaStream {
         streams.close();
     }
 
+    static class TopCommittersTransformer implements Transformer<String, Long, KeyValue<String, String>> {
+
+        private KeyValueStore<String, ValueAndTimestamp> store;
+
+        @Override
+        public void init(ProcessorContext context) {
+            this.store = (KeyValueStore) context.getStateStore(COMMITS_BY_AUTHOR_STORE);
+        }
+
+        @Override
+        public KeyValue<String, String> transform(String key, Long value) {
+            KeyValueIterator<String, ValueAndTimestamp> iterator = store.all();
+            List<KeyValue<String, ValueAndTimestamp>> authors = new ArrayList<>();
+
+            while (iterator.hasNext()) {
+                authors.add(iterator.next());
+            }
+
+            authors.sort(Comparator.comparing(o ->
+                    ((KeyValue<String, ValueAndTimestamp<Long>>) o).value.value()).reversed());
+
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 5 && i < authors.size(); i++) {
+                sb.append(authors.get(i).key)
+                        .append(" (").append(authors.get(i).value.value()).append(")");
+                if (i != 4 && i != authors.size() - 1) {
+                    sb.append(", ");
+                }
+            }
+            logger.debug("Top committers found: " + sb.toString());
+
+            return new KeyValue<>("top5-committers", "top5-committers: " + sb.toString());
+        }
+
+        @Override
+        public void close() {
+        }
+    }
+
+    // TODO: can be declared in one place
     static class DistinctCommitsTransformer implements Transformer<String, String, KeyValue<String, String>> {
 
         private KeyValueStore<String, String> store;

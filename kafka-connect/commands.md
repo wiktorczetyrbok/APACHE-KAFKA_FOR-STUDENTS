@@ -27,7 +27,7 @@ curl -H 'Content-Type: application/json' \
     "config": {
         "connector.class": "FileStreamSink",
         "tasks.max": 1,
-        "topics": "github-metrics-total-commits,github-metrics-total-committers",
+        "topics": "github-metrics-total-commits,github-metrics-total-committers,github-metrics-top-committers",
         "file": "/tmp/github-metrics.txt"
     }
 }' \

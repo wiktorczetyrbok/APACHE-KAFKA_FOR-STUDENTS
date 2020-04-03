@@ -64,7 +64,7 @@ public class CommittersCounter implements MetricsKafkaStream {
                 .selectKey((key, value) -> "total_committers")
                 .groupByKey()
                 .count(Materialized.as("CommittersCount"))
-                .mapValues(value -> "total_committers   " + value);
+                .mapValues(value -> "total_committers: " + value);
 
         totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
