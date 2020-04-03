@@ -35,6 +35,8 @@ public class CommitsProducer {
         properties.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         properties.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
         properties.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        properties.setProperty(ProducerConfig.ENABLE_IDEMPOTENCE_CONFIG, "true");
+        properties.setProperty(ProducerConfig.ACKS_CONFIG, "all");
 
         producer = new KafkaProducer<>(properties);
     }
@@ -47,7 +49,7 @@ public class CommitsProducer {
             logger.warn("Cannot read the value - data may be malformed", e);
         }
 
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, commitJson);
+        ProducerRecord<String, String> record = new ProducerRecord<>(topic, commit.getSha(), commitJson);
         producer.send(record);
     }
 

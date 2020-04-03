@@ -13,13 +13,6 @@
     <artifactId>github-accounts-analyzer</artifactId>
 
     <dependencies>
-        <!-- Kafka Consumer & Producer API -->
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <version>2.4.1</version>
-        </dependency>
-
         <!-- WebClient and its dependencies -->
         <dependency>
             <groupId>io.projectreactor</groupId>

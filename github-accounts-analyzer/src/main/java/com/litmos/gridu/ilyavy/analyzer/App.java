@@ -53,7 +53,6 @@ public class App {
                     LocalDateTime startingFrom = intervalDeserializer.countStartingDateTime(account.getInterval());
                     List<Commit> commits = githubService.pollCommits(account.getAccount(), startingFrom);
                     for (Commit commit : commits) {
-                        commit.setAuthor(account.getAccount()); // TODO
                         commitsProducer.push(commit);
                     }
                 }

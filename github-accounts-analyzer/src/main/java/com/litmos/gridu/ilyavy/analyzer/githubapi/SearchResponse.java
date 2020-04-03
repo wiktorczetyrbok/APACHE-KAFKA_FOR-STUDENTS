@@ -35,6 +35,8 @@ class SearchResponse {
 
         private CommitInfo commit;
 
+        private AuthorInfo author;
+
         private RepositoryInfo repository;
 
         public String getSha() {
@@ -51,6 +53,14 @@ class SearchResponse {
 
         public void setCommit(CommitInfo commit) {
             this.commit = commit;
+        }
+
+        public AuthorInfo getAuthor() {
+            return author;
+        }
+
+        public void setAuthor(AuthorInfo author) {
+            this.author = author;
         }
 
         public RepositoryInfo getRepository() {
@@ -95,6 +105,19 @@ class SearchResponse {
 
         public void setDate(ZonedDateTime date) {
             this.date = date;
+        }
+    }
+
+    public static class AuthorInfo {
+
+        private String login;
+
+        public String getLogin() {
+            return login;
+        }
+
+        public void setLogin(String login) {
+            this.login = login;
         }
     }
 

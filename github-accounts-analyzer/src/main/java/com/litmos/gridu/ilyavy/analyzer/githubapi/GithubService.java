@@ -44,6 +44,7 @@ public class GithubService {
         commit.setSha(item.getSha());
         commit.setDateTimeUtc(item.getCommit().getAuthor().getDate().toLocalDateTime());
         commit.setMessage(item.getCommit().getMessage());
+        commit.setAuthor(item.getAuthor().getLogin());
         commit.setRepositoryFullName(item.getRepository().getFullName());
 
         return commit;
