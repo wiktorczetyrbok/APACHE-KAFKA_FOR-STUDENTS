@@ -64,4 +64,16 @@ public class Commit {
     public void setMessage(String message) {
         this.message = message;
     }
+
+    @Override
+    public String toString() {
+        return "Commit{" +
+                "author='" + author + '\'' +
+                ", dateTimeUtc=" + dateTimeUtc +
+                ", language='" + language + '\'' +
+                ", sha='" + sha + '\'' +
+                ", message='" + message + '\'' +
+                ", repositoryFullName='" + repositoryFullName + '\'' +
+                '}';
+    }
 }

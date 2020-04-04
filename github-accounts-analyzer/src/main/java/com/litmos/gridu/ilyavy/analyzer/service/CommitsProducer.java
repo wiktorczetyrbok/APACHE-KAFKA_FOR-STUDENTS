@@ -42,6 +42,8 @@ public class CommitsProducer {
     }
 
     public void push(Commit commit) {
+        logger.info("Pushing commit into kafka: " + commit);
+
         String commitJson = null;
         try {
             commitJson = objectMapper.writeValueAsString(commit);

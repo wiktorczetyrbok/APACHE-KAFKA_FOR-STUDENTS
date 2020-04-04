@@ -3,13 +3,16 @@ package com.litmos.gridu.ilyavy.analyzer.githubapi;
 import com.litmos.gridu.ilyavy.analyzer.model.Commit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class GithubService {
 
@@ -19,7 +22,9 @@ public class GithubService {
 
     private static final String GITHUB_API_ACCEPT_HEADER = "application/vnd.github.cloak-preview";
 
-    public List<Commit> pollCommits(String githubLogin, LocalDateTime startingDateTime) {
+    public Flux<Commit> pollCommits(String githubLogin, LocalDateTime startingDateTime) {
+        logger.info("Polling commits for " + githubLogin);
+
         String searchQuery = String.format("author:%s+author-date:>%s", githubLogin,
                 startingDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")));
 
@@ -34,9 +39,21 @@ public class GithubService {
                 .exchange()
                 .flatMap(r -> r.bodyToMono(SearchResponse.class))
                 .flatMapMany(searchResult -> Flux.fromArray(searchResult.getItems()))
-                .map(GithubService::searchResultItemToCommit)
-                .collectList()
-                .block();
+                .flatMap(item -> WebClient.create(item.getRepository().getLanguagesUrl())
+                        .get()
+                        .exchange()
+                        .flatMap(r -> r.bodyToMono(new ParameterizedTypeReference<Map<String, Long>>(){}))
+                        .map(languages -> {
+                            if (languages.isEmpty()) {
+                                return "Undefined";
+                            }
+                            List<Map.Entry<String, Long>> entries = new ArrayList<>(languages.entrySet());
+                            entries.sort(Map.Entry.comparingByValue());
+                            String primaryLanguage = entries.get(entries.size() - 1).getKey();
+                            return primaryLanguage;
+                        })
+                        .map(item::setLanguage))
+                .map(GithubService::searchResultItemToCommit);
     }
 
     private static Commit searchResultItemToCommit(SearchResponse.SearchResultItem item) {
@@ -46,6 +63,7 @@ public class GithubService {
         commit.setMessage(item.getCommit().getMessage());
         commit.setAuthor(item.getAuthor().getLogin());
         commit.setRepositoryFullName(item.getRepository().getFullName());
+        commit.setLanguage(item.getLanguage());
 
         return commit;
     }

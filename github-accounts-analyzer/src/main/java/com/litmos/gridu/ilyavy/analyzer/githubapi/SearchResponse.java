@@ -1,5 +1,6 @@
 package com.litmos.gridu.ilyavy.analyzer.githubapi;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -39,6 +40,9 @@ class SearchResponse {
 
         private RepositoryInfo repository;
 
+        @JsonIgnore
+        private String language;
+
         public String getSha() {
             return sha;
         }
@@ -69,6 +73,15 @@ class SearchResponse {
 
         public void setRepository(RepositoryInfo repository) {
             this.repository = repository;
+        }
+
+        public String getLanguage() {
+            return language;
+        }
+
+        public SearchResultItem setLanguage(String language) {
+            this.language = language;
+            return this;
         }
     }
 
