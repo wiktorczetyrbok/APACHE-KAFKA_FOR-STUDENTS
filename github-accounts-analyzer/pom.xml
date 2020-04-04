@@ -13,21 +13,31 @@
     <artifactId>github-accounts-analyzer</artifactId>
 
     <dependencies>
-        <!-- WebClient and its dependencies -->
+        <!-- WebClient -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webflux</artifactId>
+            <version>5.2.3.RELEASE</version>
+        </dependency>
+
+        <!-- Reactor -->
         <dependency>
             <groupId>io.projectreactor</groupId>
             <artifactId>reactor-core</artifactId>
             <version>3.3.3.RELEASE</version>
         </dependency>
         <dependency>
-            <groupId>org.springframework</groupId>
-            <artifactId>spring-webflux</artifactId>
-            <version>5.2.3.RELEASE</version>
-        </dependency>
-        <dependency>
             <groupId>io.projectreactor.netty</groupId>
             <artifactId>reactor-netty</artifactId>
             <version>0.9.5.RELEASE</version>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
+            <version>3.3.4.RELEASE</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

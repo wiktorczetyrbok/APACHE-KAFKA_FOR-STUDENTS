@@ -1,10 +1,10 @@
 package com.litmos.gridu.ilyavy.analyzer.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import java.util.Properties;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.litmos.gridu.ilyavy.analyzer.model.Commit;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -12,18 +12,28 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Properties;
+import com.litmos.gridu.ilyavy.analyzer.model.Commit;
 
+/**
+ * Wrapper around KafkaProducer, produces github commits objects.
+ * {@link Commit}
+ */
 public class CommitsProducer {
 
     private static final Logger logger = LoggerFactory.getLogger(CommitsProducer.class);
 
-    private final KafkaProducer<String, String> producer;
+    KafkaProducer<String, String> producer;
 
     private final String topic;
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * Constructs CommitsProducer with the provided parameters.
+     *
+     * @param bootstrapServers kafka producer's bootstrap servers
+     * @param topic            kafka topic
+     */
     public CommitsProducer(String bootstrapServers, String topic) {
         this.topic = topic;
 
@@ -41,20 +51,28 @@ public class CommitsProducer {
         producer = new KafkaProducer<>(properties);
     }
 
-    public void push(Commit commit) {
+    /**
+     * Proxies `send` call to the underlying kafka producer.
+     *
+     * @param commit commit to send to kafka
+     */
+    public void send(Commit commit) {
         logger.info("Pushing commit into kafka: " + commit);
 
         String commitJson = null;
         try {
             commitJson = objectMapper.writeValueAsString(commit);
-        } catch (JsonProcessingException e) {
-            logger.warn("Cannot read the value - data may be malformed", e);
+        } catch (Exception e) {
+            logger.warn("Cannot write commit as json string", e);
         }
 
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, commit.getSha(), commitJson);
         producer.send(record);
     }
 
+    /**
+     * Flushes and closes KafkaProducer.
+     */
     public void close() {
         producer.flush();
         producer.close();

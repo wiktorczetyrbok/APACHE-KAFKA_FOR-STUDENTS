@@ -1,16 +1,17 @@
 package com.litmos.gridu.ilyavy.analyzer;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import com.litmos.gridu.ilyavy.analyzer.githubapi.GithubService;
 import com.litmos.gridu.ilyavy.analyzer.service.AccountsConsumer;
 import com.litmos.gridu.ilyavy.analyzer.service.CommitsProducer;
 import com.litmos.gridu.ilyavy.analyzer.service.IntervalDeserializer;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-
+/** Main class of the application. */
 public class App {
     private static final Logger logger = LoggerFactory.getLogger(App.class);
 
@@ -31,17 +32,11 @@ public class App {
     public static void main(String[] args) throws JsonProcessingException {
         GithubService githubService = new GithubService();
         IntervalDeserializer intervalDeserializer = new IntervalDeserializer();
-        AccountsConsumer accountsConsumer = new AccountsConsumer(BOOTSTRAP_SERVERS, INPUT_TOPIC, GROUP_ID);
+
+        AccountsConsumer accountsConsumer = new AccountsConsumer(BOOTSTRAP_SERVERS, GROUP_ID).subscribe(INPUT_TOPIC);
         CommitsProducer commitsProducer = new CommitsProducer(BOOTSTRAP_SERVERS, OUTPUT_TOPIC);
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            shutdownFlag = true;
-            try {
-                Thread.sleep(SHUTDOWN_TIMEOUT_MS);
-            } catch (InterruptedException e) {
-                logger.warn("Error occurred when shutting down", e);
-            }
-        }));
+        addShutdownHook();
 
         try {
             while (!shutdownFlag) {
@@ -50,12 +45,23 @@ public class App {
                             LocalDateTime startingFrom = intervalDeserializer.countStartingDateTime(account.getInterval());
                             return githubService.pollCommits(account.getAccount(), startingFrom);
                         })
-                        .subscribe(commitsProducer::push, e -> logger.warn("Processing error occurred", e));
+                        .subscribe(commitsProducer::send, e -> logger.warn("Processing error occurred", e));
             }
         } finally {
             logger.info("Shutting down...");
             accountsConsumer.close();
             commitsProducer.close();
         }
+    }
+
+    private static void addShutdownHook() {
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            shutdownFlag = true;
+            try {
+                Thread.sleep(SHUTDOWN_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                logger.warn("Error occurred when shutting down", e);
+            }
+        }));
     }
 }
