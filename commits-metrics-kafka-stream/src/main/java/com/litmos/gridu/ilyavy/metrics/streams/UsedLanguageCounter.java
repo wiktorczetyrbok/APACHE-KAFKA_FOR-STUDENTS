@@ -10,7 +10,7 @@ import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.Consumed;
-import org.apache.kafka.streams.kstream.KStream;
+import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
 import org.apache.kafka.streams.state.KeyValueStore;
@@ -21,20 +21,17 @@ import org.slf4j.LoggerFactory;
 
 import com.litmos.gridu.ilyavy.analyzer.model.Commit;
 import com.litmos.gridu.ilyavy.metrics.streams.transformer.DeduplicateByKeyTransformer;
-import com.litmos.gridu.ilyavy.metrics.streams.transformer.TopFiveCommittersTransformer;
 
 /**
- * Calculates top five of committers by the amount of distinct commits each one has.
+ * Counts how much commits were done for curtain programming language.
  * Expexrs {@link Commit} messages on the input topic.
- * Produces string value with the top five committers, e.g. "top5_committers: user1 (100), user2 (90)".
+ * Produces string value with the number of commits in the corresponding language, e.g. "Javas: 500".
  */
-public class TopFiveCommitters extends MetricsKafkaStream {
+public class UsedLanguageCounter extends MetricsKafkaStream {
 
-    private static final Logger logger = LoggerFactory.getLogger(TopFiveCommitters.class);
+    private static final Logger logger = LoggerFactory.getLogger(UsedLanguageCounter.class);
 
-    private static final String DEDUPLICATE_COMMITS_STORE = "distinct-commits-tc";
-
-    private static final String COMMITS_BY_AUTHOR_STORE = "CommitsByAuthor";
+    private static final String DEDUPLICATE_COMMITS_STORE = "distinct-commits-tc2";
 
     KafkaStreams streams;
 
@@ -45,13 +42,13 @@ public class TopFiveCommitters extends MetricsKafkaStream {
     private final Properties properties;
 
     /**
-     * Constracts top five committers calculator.
+     * Constracts used languages counter.
      *
      * @param properties  properties which will be used for KafkaStreams
      * @param inputTopic  the name of the input topic
      * @param outputTopic the name of the output topic
      */
-    public TopFiveCommitters(Properties properties, String inputTopic, String outputTopic) {
+    public UsedLanguageCounter(Properties properties, String inputTopic, String outputTopic) {
         this.inputTopic = inputTopic;
         this.outputTopic = outputTopic;
 
@@ -60,7 +57,7 @@ public class TopFiveCommitters extends MetricsKafkaStream {
     }
 
     @Override
-    Topology createTopology() {
+    public Topology createTopology() {
         StreamsBuilder builder = new StreamsBuilder();
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
@@ -70,7 +67,7 @@ public class TopFiveCommitters extends MetricsKafkaStream {
                         Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueStoreBuilder);
 
-        KStream<String, String> totalCommitsNumber = builder
+        KTable<String, String> totalCommitsNumber = builder
                 .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
                 .mapValues((key, value) -> {
                     Commit commit = null;
@@ -79,16 +76,15 @@ public class TopFiveCommitters extends MetricsKafkaStream {
                     } catch (Exception e) {
                         logger.warn("Cannot read the value - data may be malformed", e);
                     }
-                    return commit != null ? commit.getAuthor() : null;
+                    return commit != null ? commit.getLanguage() : null;
                 })
                 .transform(() -> new DeduplicateByKeyTransformer(DEDUPLICATE_COMMITS_STORE), DEDUPLICATE_COMMITS_STORE)
                 .selectKey((key, value) -> value)
                 .groupByKey()
-                .count(Materialized.as(COMMITS_BY_AUTHOR_STORE))
-                .toStream()
-                .transform(() -> new TopFiveCommittersTransformer(COMMITS_BY_AUTHOR_STORE), COMMITS_BY_AUTHOR_STORE);
+                .count(Materialized.as("LanguagesCount"))
+                .mapValues((key, value) -> key + ": " + value);
 
-        totalCommitsNumber.to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }

@@ -10,10 +10,7 @@ import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.litmos.gridu.ilyavy.metrics.streams.CommittersCounter;
-import com.litmos.gridu.ilyavy.metrics.streams.MetricsKafkaStream;
-import com.litmos.gridu.ilyavy.metrics.streams.TopFiveCommitters;
-import com.litmos.gridu.ilyavy.metrics.streams.TotalCommitsCounter;
+import com.litmos.gridu.ilyavy.metrics.streams.*;
 
 public class MetricsApp {
 
@@ -28,6 +25,8 @@ public class MetricsApp {
     private static final String COMMITTERS_NUMBER_TOPIC = "github-metrics-total-committers";
 
     private static final String TOP_COMMITTERS_TOPIC = "github-metrics-top-committers";
+
+    private static final String USED_LANGUAGES_TOPIC = "github-metrics-languages";
 
     private static final List<MetricsKafkaStream> streams = new ArrayList<>();
 
@@ -48,6 +47,9 @@ public class MetricsApp {
 
         streams.add(new TopFiveCommitters(properties, INPUT_TOPIC, TOP_COMMITTERS_TOPIC));
         logger.info("Top committers stream is launched");
+
+        streams.add(new UsedLanguageCounter(properties, INPUT_TOPIC, USED_LANGUAGES_TOPIC));
+        logger.info("Used programming languages counter stream is launched");
 
         streams.forEach(MetricsKafkaStream::start);
 

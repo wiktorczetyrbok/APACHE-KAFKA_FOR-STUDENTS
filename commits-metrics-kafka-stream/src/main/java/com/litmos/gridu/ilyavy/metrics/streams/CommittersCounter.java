@@ -26,7 +26,7 @@ import com.litmos.gridu.ilyavy.metrics.streams.transformer.DeduplicateByKeyTrans
  * Expexrs {@link Commit} messages on the input topic.
  * Produces string value with the number of committers, e.g. "total_committers: 5".
  */
-public class CommittersCounter implements MetricsKafkaStream {
+public class CommittersCounter extends MetricsKafkaStream {
 
     private static final Logger logger = LoggerFactory.getLogger(CommittersCounter.class);
 
@@ -55,6 +55,7 @@ public class CommittersCounter implements MetricsKafkaStream {
         properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "commits-metrics-committers-counter");
     }
 
+    @Override
     Topology createTopology() {
         StreamsBuilder builder = new StreamsBuilder();
         ObjectMapper objectMapper = new ObjectMapper();

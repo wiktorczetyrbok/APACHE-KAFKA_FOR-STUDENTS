@@ -13,15 +13,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.*;
 
-class CommittersCounterTest extends BaseTestStreams {
+class UsedLanguageCounterTest extends BaseTestStreams {
 
     @Override
     MetricsKafkaStream createMetricsKafkaStream(Properties properties) {
-        return new CommittersCounter(properties, INPUT_TOPIC_NAME, OUTPUT_TOPIC_NAME);
+        return new UsedLanguageCounter(properties, INPUT_TOPIC_NAME, OUTPUT_TOPIC_NAME);
     }
 
     @Test
-    void commitsAreCounted() throws JsonProcessingException {
+    void languagesAreCounted() throws JsonProcessingException {
         Commit commit1 = new Commit()
                 .setAuthor("githubLogin")
                 .setLanguage("Java")
@@ -33,55 +33,57 @@ class CommittersCounterTest extends BaseTestStreams {
 
         Commit commit2 = new Commit()
                 .setAuthor("anotherGithubLogin")
-                .setLanguage("Java")
+                .setLanguage("Scala")
                 .setMessage("Test commit message 2")
                 .setRepositoryFullName("repository")
                 .setSha("sha2")
                 .setDateTimeUtc(LocalDateTime.now());
         String commit2Json = objectMapper.writeValueAsString(commit2);
 
+        Commit commit3 = new Commit()
+                .setAuthor("anotherGithubLogin")
+                .setLanguage("Java")
+                .setMessage("Test commit message 3")
+                .setRepositoryFullName("repository3")
+                .setSha("sha3")
+                .setDateTimeUtc(LocalDateTime.now());
+        String commit3Json = objectMapper.writeValueAsString(commit3);
+
         inputTopic.pipeInput(commit1.getSha(), commit1Json);
         inputTopic.pipeInput(commit2.getSha(), commit2Json);
+        inputTopic.pipeInput(commit3.getSha(), commit3Json);
 
-        assertThat(outputTopic.readValue()).isEqualTo("total_committers: 1");
-        assertThat(outputTopic.readValue()).isEqualTo("total_committers: 2");
+        assertThat(outputTopic.readValue()).isEqualTo("Java: 1");
+        assertThat(outputTopic.readValue()).isEqualTo("Scala: 1");
+        assertThat(outputTopic.readValue()).isEqualTo("Java: 2");
         assertTrue(outputTopic.isEmpty());
     }
 
     @Test
-    void duplicateCommittersAreCountedAsOne() throws JsonProcessingException {
-        Commit commit1 = new Commit()
+    void duplicateCommitsAreCountedAsOne() throws JsonProcessingException {
+        Commit commit = new Commit()
                 .setAuthor("githubLogin")
                 .setLanguage("Java")
                 .setMessage("Test commit message 1")
                 .setRepositoryFullName("repository")
                 .setSha("sha1")
                 .setDateTimeUtc(LocalDateTime.now());
-        String commit1Json = objectMapper.writeValueAsString(commit1);
+        String commitJson = objectMapper.writeValueAsString(commit);
 
-        Commit commit2 = new Commit()
-                .setAuthor("githubLogin")
-                .setLanguage("Java")
-                .setMessage("Test commit message 2")
-                .setRepositoryFullName("repository")
-                .setSha("sha2")
-                .setDateTimeUtc(LocalDateTime.now());
-        String commit2Json = objectMapper.writeValueAsString(commit2);
+        inputTopic.pipeInput(commit.getSha(), commitJson);
+        inputTopic.pipeInput(commit.getSha(), commitJson);
 
-        inputTopic.pipeInput(commit1.getSha(), commit1Json);
-        inputTopic.pipeInput(commit2.getSha(), commit2Json);
-
-        assertThat(outputTopic.readValue()).isEqualTo("total_committers: 1");
+        assertThat(outputTopic.readValue()).isEqualTo("Java: 1");
         assertTrue(outputTopic.isEmpty());
     }
 
     @Test
     void close() {
-        CommittersCounter committersCounter =
-                new CommittersCounter(new Properties(), INPUT_TOPIC_NAME, OUTPUT_TOPIC_NAME);
-        committersCounter.streams = mock(KafkaStreams.class);
+        UsedLanguageCounter usedLanguageCounter =
+                new UsedLanguageCounter(new Properties(), INPUT_TOPIC_NAME, OUTPUT_TOPIC_NAME);
+        usedLanguageCounter.streams = mock(KafkaStreams.class);
 
-        committersCounter.close();
-        verify(committersCounter.streams, times(1)).close();
+        usedLanguageCounter.close();
+        verify(usedLanguageCounter.streams, times(1)).close();
     }
 }
