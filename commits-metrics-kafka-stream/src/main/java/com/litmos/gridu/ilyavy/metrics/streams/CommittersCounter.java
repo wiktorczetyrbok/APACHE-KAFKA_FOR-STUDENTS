@@ -1,42 +1,58 @@
 package com.litmos.gridu.ilyavy.metrics.streams;
 
+import java.util.Properties;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.litmos.gridu.ilyavy.analyzer.model.Commit;
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.streams.*;
+import org.apache.kafka.streams.KafkaStreams;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.Topology;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.kstream.Transformer;
-import org.apache.kafka.streams.processor.ProcessorContext;
 import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.kafka.streams.state.StoreBuilder;
 import org.apache.kafka.streams.state.Stores;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Properties;
+import com.litmos.gridu.ilyavy.analyzer.model.Commit;
+import com.litmos.gridu.ilyavy.metrics.streams.transformer.DeduplicateByKeyTransformer;
 
+/**
+ * Counts total number of distinct committers.
+ * Expexrs {@link Commit} messages on the input topic.
+ * Produces string value with the number of committers, e.g. "total_committers: 5".
+ */
 public class CommittersCounter implements MetricsKafkaStream {
 
     private static final Logger logger = LoggerFactory.getLogger(CommittersCounter.class);
 
     private static final String TRANSFORMER_STORE = "distinct-committers";
 
-    private KafkaStreams streams;
+    KafkaStreams streams;
 
     private final String inputTopic;
 
     private final String outputTopic;
 
+    private final Properties properties;
+
+    /**
+     * Constracts total committers counter.
+     *
+     * @param properties  properties which will be used for KafkaStreams
+     * @param inputTopic  the name of the input topic
+     * @param outputTopic the name of the output topic
+     */
     public CommittersCounter(Properties properties, String inputTopic, String outputTopic) {
         this.inputTopic = inputTopic;
         this.outputTopic = outputTopic;
+        this.properties = properties;
 
         properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "commits-metrics-committers-counter");
-
-        streams = new KafkaStreams(createTopology(), properties);
     }
 
     Topology createTopology() {
@@ -49,7 +65,7 @@ public class CommittersCounter implements MetricsKafkaStream {
                         Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueStoreBuilder);
 
-        KTable<String, String> totalCommitsNumber = builder.stream(inputTopic)
+        KTable<String, String> committersCount = builder.stream(inputTopic)
                 .mapValues((key, value) -> {
                     Commit commit = null;
                     try {
@@ -60,48 +76,25 @@ public class CommittersCounter implements MetricsKafkaStream {
                     return commit != null ? commit.getAuthor() : null;
                 })
                 .selectKey((key, value) -> value)
-                .transform(DistinctCommittersTransformer::new, TRANSFORMER_STORE)
+                .transform(() -> new DeduplicateByKeyTransformer(TRANSFORMER_STORE), TRANSFORMER_STORE)
                 .selectKey((key, value) -> "total_committers")
                 .groupByKey()
                 .count(Materialized.as("CommittersCount"))
                 .mapValues(value -> "total_committers: " + value);
 
-        totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
+        committersCount.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
 
         return builder.build();
     }
 
     @Override
     public void start() {
+        streams = new KafkaStreams(createTopology(), properties);
         streams.start();
     }
 
     @Override
     public void close() {
         streams.close();
-    }
-
-    static class DistinctCommittersTransformer implements Transformer<String, String, KeyValue<String, String>> {
-
-        private KeyValueStore<String, String> store;
-
-        @Override
-        public void init(ProcessorContext context) {
-            this.store = (KeyValueStore) context.getStateStore(TRANSFORMER_STORE);
-        }
-
-        @Override
-        public KeyValue<String, String> transform(String key, String value) {
-            String res = store.putIfAbsent(key, value);
-            System.out.println("lookup result: " + res);
-            if (res != null) {
-                return null;
-            }
-            return new KeyValue<>(key, value);
-        }
-
-        @Override
-        public void close() {
-        }
     }
 }

@@ -1,18 +1,19 @@
 package com.litmos.gridu.ilyavy.metrics;
 
-import com.litmos.gridu.ilyavy.metrics.streams.CommittersCounter;
-import com.litmos.gridu.ilyavy.metrics.streams.MetricsKafkaStream;
-import com.litmos.gridu.ilyavy.metrics.streams.TopCommitters;
-import com.litmos.gridu.ilyavy.metrics.streams.TotalCommitsCounter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Properties;
+
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import com.litmos.gridu.ilyavy.metrics.streams.CommittersCounter;
+import com.litmos.gridu.ilyavy.metrics.streams.MetricsKafkaStream;
+import com.litmos.gridu.ilyavy.metrics.streams.TopFiveCommitters;
+import com.litmos.gridu.ilyavy.metrics.streams.TotalCommitsCounter;
 
 public class MetricsApp {
 
@@ -45,7 +46,7 @@ public class MetricsApp {
         streams.add(new CommittersCounter(properties, INPUT_TOPIC, COMMITTERS_NUMBER_TOPIC));
         logger.info("Committers counter stream is launched");
 
-        streams.add(new TopCommitters(properties, INPUT_TOPIC, TOP_COMMITTERS_TOPIC));
+        streams.add(new TopFiveCommitters(properties, INPUT_TOPIC, TOP_COMMITTERS_TOPIC));
         logger.info("Top committers stream is launched");
 
         streams.forEach(MetricsKafkaStream::start);
