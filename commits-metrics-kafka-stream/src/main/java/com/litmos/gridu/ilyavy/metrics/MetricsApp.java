@@ -12,11 +12,10 @@ import org.slf4j.LoggerFactory;
 
 import com.litmos.gridu.ilyavy.metrics.streams.*;
 
+/** Main class of the application, launches all the streams. */
 public class MetricsApp {
 
     private static final Logger logger = LoggerFactory.getLogger(MetricsApp.class);
-
-    private static final String BOOTSTRAP_SERVERS = "localhost:9092,localhost:9095,localhost:9098";
 
     private static final String INPUT_TOPIC = "github-commits";
 
@@ -28,32 +27,60 @@ public class MetricsApp {
 
     private static final String USED_LANGUAGES_TOPIC = "github-metrics-languages";
 
-    private static final List<MetricsKafkaStream> streams = new ArrayList<>();
+    private String bootstrapServers;
 
-    public static void main(String[] args) {
-        Properties properties = new Properties();
-        properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, BOOTSTRAP_SERVERS);
-        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-        properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+    private final List<MetricsKafkaStream> streams = new ArrayList<>();
 
-        properties.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0"); // TODO
+    public MetricsApp(String bootstrapServers) {
+        this.bootstrapServers = bootstrapServers;
+    }
 
-        streams.add(new TotalCommitsCounter(properties, INPUT_TOPIC, TOTAL_COMMITS_NUMBER_TOPIC));
+    public void launchStreams() {
+        MetricsKafkaStream totalCommitsCounter = new TotalCommitsCounter(
+                baseProperties(bootstrapServers), INPUT_TOPIC, TOTAL_COMMITS_NUMBER_TOPIC);
+        totalCommitsCounter.start();
+        streams.add(totalCommitsCounter);
         logger.info("Total commits counter stream is launched");
 
-        streams.add(new CommittersCounter(properties, INPUT_TOPIC, COMMITTERS_NUMBER_TOPIC));
+        MetricsKafkaStream committersCounter = new CommittersCounter(
+                baseProperties(bootstrapServers), INPUT_TOPIC, COMMITTERS_NUMBER_TOPIC);
+        committersCounter.start();
+        streams.add(committersCounter);
         logger.info("Committers counter stream is launched");
 
-        streams.add(new TopFiveCommitters(properties, INPUT_TOPIC, TOP_COMMITTERS_TOPIC));
+        MetricsKafkaStream topFiveCommitters = new TopFiveCommitters(
+                baseProperties(bootstrapServers), INPUT_TOPIC, TOP_COMMITTERS_TOPIC);
+        topFiveCommitters.start();
+        streams.add(topFiveCommitters);
         logger.info("Top committers stream is launched");
 
-        streams.add(new UsedLanguageCounter(properties, INPUT_TOPIC, USED_LANGUAGES_TOPIC));
+        MetricsKafkaStream usedLanguageCounter = new UsedLanguageCounter(
+                baseProperties(bootstrapServers), INPUT_TOPIC, USED_LANGUAGES_TOPIC);
+        usedLanguageCounter.start();
+        streams.add(usedLanguageCounter);
         logger.info("Used programming languages counter stream is launched");
-
-        streams.forEach(MetricsKafkaStream::start);
 
         // shutdown hook to correctly close the streams application
         Runtime.getRuntime().addShutdownHook(new Thread(() -> streams.forEach(MetricsKafkaStream::close)));
+    }
+
+    private static Properties baseProperties(String bootstrapServers) {
+        Properties properties = new Properties();
+        properties.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        properties.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        properties.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        properties.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+        properties.put(StreamsConfig.PROCESSING_GUARANTEE_CONFIG, StreamsConfig.EXACTLY_ONCE);
+        properties.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0");
+        return properties;
+    }
+
+    public List<MetricsKafkaStream> getStreams() {
+        return streams;
+    }
+
+    public static void main(String[] args) {
+        MetricsApp app = new MetricsApp("localhost:9092,localhost:9095,localhost:9098");
+        app.launchStreams();
     }
 }

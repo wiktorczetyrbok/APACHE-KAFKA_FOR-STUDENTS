@@ -30,9 +30,7 @@ public class CommittersCounter extends MetricsKafkaStream {
 
     private static final Logger logger = LoggerFactory.getLogger(CommittersCounter.class);
 
-    private static final String TRANSFORMER_STORE = "distinct-committers";
-
-    KafkaStreams streams;
+    private static final String TRANSFORMER_STORE = "committers-counter-distinct-committers";
 
     private final String inputTopic;
 
@@ -91,11 +89,6 @@ public class CommittersCounter extends MetricsKafkaStream {
     @Override
     public void start() {
         streams = new KafkaStreams(createTopology(), properties);
-        streams.start();
-    }
-
-    @Override
-    public void close() {
-        streams.close();
+        super.start();
     }
 }

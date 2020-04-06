@@ -31,9 +31,7 @@ public class UsedLanguageCounter extends MetricsKafkaStream {
 
     private static final Logger logger = LoggerFactory.getLogger(UsedLanguageCounter.class);
 
-    private static final String DEDUPLICATE_COMMITS_STORE = "distinct-commits-tc2";
-
-    KafkaStreams streams;
+    private static final String DEDUPLICATE_COMMITS_STORE = "used-languages-distinct-commits";
 
     private final String inputTopic;
 
@@ -53,7 +51,7 @@ public class UsedLanguageCounter extends MetricsKafkaStream {
         this.outputTopic = outputTopic;
 
         this.properties = properties;
-        properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "commits-metrics-top-committers");
+        properties.put(StreamsConfig.APPLICATION_ID_CONFIG, "commits-metrics-used-languages-calc");
     }
 
     @Override
@@ -92,11 +90,6 @@ public class UsedLanguageCounter extends MetricsKafkaStream {
     @Override
     public void start() {
         streams = new KafkaStreams(createTopology(), properties);
-        streams.start();
-    }
-
-    @Override
-    public void close() {
-        streams.close();
+        super.start();
     }
 }

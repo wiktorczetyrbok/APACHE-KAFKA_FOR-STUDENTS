@@ -61,7 +61,7 @@ class CommittersCounterTest extends BaseTestStreams {
 
         Commit commit2 = new Commit()
                 .setAuthor("githubLogin")
-                .setLanguage("Java")
+                .setLanguage("Scala")
                 .setMessage("Test commit message 2")
                 .setRepositoryFullName("repository")
                 .setSha("sha2")

@@ -32,11 +32,9 @@ public class TopFiveCommitters extends MetricsKafkaStream {
 
     private static final Logger logger = LoggerFactory.getLogger(TopFiveCommitters.class);
 
-    private static final String DEDUPLICATE_COMMITS_STORE = "distinct-commits-tc";
+    private static final String DEDUPLICATE_COMMITS_STORE = "top5-committers-distinct-commits";
 
     private static final String COMMITS_BY_AUTHOR_STORE = "CommitsByAuthor";
-
-    KafkaStreams streams;
 
     private final String inputTopic;
 
@@ -96,11 +94,6 @@ public class TopFiveCommitters extends MetricsKafkaStream {
     @Override
     public void start() {
         streams = new KafkaStreams(createTopology(), properties);
-        streams.start();
-    }
-
-    @Override
-    public void close() {
-        streams.close();
+        super.start();
     }
 }

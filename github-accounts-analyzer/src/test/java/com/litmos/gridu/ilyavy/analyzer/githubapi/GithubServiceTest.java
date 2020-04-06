@@ -33,7 +33,7 @@ class GithubServiceTest {
 
         ClientResponse commitsResponse = preparePollCommitsGithubResponse(expected);
 
-        GithubServiceMockedLanguageRequest service = new GithubServiceMockedLanguageRequest();
+        GithubServiceMockedLanguageRequest service = new GithubServiceMockedLanguageRequest("github.api");
         service.webClientBuilder = WebClient.builder().exchangeFunction(request -> Mono.just(commitsResponse));
 
         StepVerifier.create(service.pollCommits("test", LocalDateTime.now()))
@@ -76,7 +76,7 @@ class GithubServiceTest {
                 .create(HttpStatus.SERVICE_UNAVAILABLE)
                 .body("").build();
 
-        GithubServiceMockedLanguageRequest service = new GithubServiceMockedLanguageRequest();
+        GithubServiceMockedLanguageRequest service = new GithubServiceMockedLanguageRequest("github.api");
         service.webClientBuilder = WebClient.builder().exchangeFunction(request -> Mono.just(commitsResponse));
 
         StepVerifier.create(service.pollCommits("test", LocalDateTime.now()))
@@ -94,7 +94,7 @@ class GithubServiceTest {
         SearchResponse.SearchResultItem item = new SearchResponse.SearchResultItem()
                 .setRepository(new SearchResponse.RepositoryInfo().setLanguagesUrl("https://github.com/languages"));
 
-        GithubService service = new GithubService();
+        GithubService service = new GithubService("https://gtihub.api");
         service.webClientBuilder = WebClient.builder().exchangeFunction(request -> Mono.just(response));
 
         StepVerifier.create(service.getCommitLanguage(item))
@@ -122,6 +122,11 @@ class GithubServiceTest {
     }
 
     static class GithubServiceMockedLanguageRequest extends GithubService {
+
+        public GithubServiceMockedLanguageRequest(String baseUrl) {
+            super(baseUrl);
+        }
+
         @Override
         Mono<String> getCommitLanguage(SearchResponse.SearchResultItem item) {
             return Mono.just("Java");

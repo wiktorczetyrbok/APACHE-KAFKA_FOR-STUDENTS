@@ -11,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
  * {@see https://developer.github.com/v3/search/#search-commits}
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-class SearchResponse {
+public class SearchResponse {
 
     @JsonProperty("total_count")
     private int totalCount;

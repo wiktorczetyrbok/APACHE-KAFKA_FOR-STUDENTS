@@ -31,9 +31,7 @@ public class TotalCommitsCounter extends MetricsKafkaStream {
 
     private static final Logger logger = LoggerFactory.getLogger(TotalCommitsCounter.class);
 
-    private static final String TRANSFORMER_STORE = "distinct-commits";
-
-    KafkaStreams streams;
+    private static final String TRANSFORMER_STORE = "total-commits-counter-distinct-commits";
 
     private final String inputTopic;
 
@@ -69,19 +67,12 @@ public class TotalCommitsCounter extends MetricsKafkaStream {
 
         KTable<String, String> totalCommitsNumber = builder
                 .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-                .mapValues((key, value) -> {
-                    Commit commit = null;
-                    try {
-                        commit = objectMapper.readValue(value, Commit.class);
-                    } catch (Exception e) {
-                        logger.warn("Cannot read the value - data may be malformed", e);
-                    }
-                    return commit != null ? commit.getAuthor() : null;
-                })
                 .transform(() -> new DeduplicateByKeyTransformer(TRANSFORMER_STORE), TRANSFORMER_STORE)
-                .selectKey((key, value) -> "total-commits-number")
+                .selectKey((key, value) -> {
+                    return "total-commits-number";
+                })
                 .groupByKey()
-                .count(Materialized.as("TotalCommitsCounts"))
+                .count(Materialized.as("TotalCommitsCount"))
                 .mapValues(value -> "total_commits: " + value);
 
         totalCommitsNumber.toStream().to(outputTopic, Produced.with(Serdes.String(), Serdes.String()));
@@ -92,11 +83,6 @@ public class TotalCommitsCounter extends MetricsKafkaStream {
     @Override
     public void start() {
         streams = new KafkaStreams(createTopology(), properties);
-        streams.start();
-    }
-
-    @Override
-    public void close() {
-        streams.close();
+        super.start();
     }
 }

@@ -8,11 +8,22 @@ import org.apache.kafka.streams.Topology;
  */
 public abstract class MetricsKafkaStream {
 
+    public KafkaStreams streams;
+
     /** Proxies the call to KafkaStreams `start` method. */
-    abstract public void start();
+    public void start() {
+        streams.start();
+    }
 
     /** Proxies the call to KafkaStreams `close` method. */
-    abstract public void close();
+    public void close() {
+        streams.close();
+    }
+
+    /** Proxies the call to KafkaStreams `cleanUp` method. */
+    public void cleanUp() {
+        streams.cleanUp();
+    }
 
     /** Creates the topology for KafkaStreams. */
     abstract Topology createTopology();

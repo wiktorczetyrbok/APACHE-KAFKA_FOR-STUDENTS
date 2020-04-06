@@ -3,6 +3,7 @@ package com.litmos.gridu.ilyavy.analyzer.githubapi;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -21,11 +22,20 @@ public class GithubService {
 
     private static final Logger logger = LoggerFactory.getLogger(GithubService.class);
 
-    private static final String BASE_URL = "https://api.github.com/";
-
     private static final String GITHUB_API_ACCEPT_HEADER = "application/vnd.github.cloak-preview";
 
     WebClient.Builder webClientBuilder = WebClient.builder();
+
+    private final String baseUrl;
+
+    /**
+     * Constructs the service with the provided base url of Github API.
+     *
+     * @param baseUrl base url for Github API
+     */
+    public GithubService(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
 
     /**
      * Polls the commits made by the `githubLogin` author starting from `startingDateTime`.
@@ -40,7 +50,7 @@ public class GithubService {
         String searchQuery = String.format("author:%s+author-date:>%s", githubLogin,
                 startingDateTime.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss")));
 
-        return webClientBuilder.baseUrl(BASE_URL).build()
+        return webClientBuilder.baseUrl(baseUrl).build()
                 .get()
                 .uri(uriBuilder -> uriBuilder
                         .path("search/commits")
@@ -65,8 +75,18 @@ public class GithubService {
         return webClientBuilder.baseUrl(item.getRepository().getLanguagesUrl()).build()
                 .get()
                 .exchange()
-                .flatMap(r -> r.bodyToMono(new ParameterizedTypeReference<Map<String, Long>>() {
-                }))
+                .flatMap(r -> {
+                    if (r.statusCode().is2xxSuccessful()) {
+                        return r.bodyToMono(new ParameterizedTypeReference<Map<String, Long>>() {
+                        });
+                    } else {
+                        return Mono.just(new HashMap<String, Long>());
+                    }
+                })
+                .onErrorResume(e -> {
+                    logger.warn("Unexpected error occurred while fetching languages", e);
+                    return Mono.just(new HashMap<>());
+                })
                 .map(languages -> {
                     if (languages.isEmpty()) {
                         return "Undefined";
