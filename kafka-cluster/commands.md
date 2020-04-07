@@ -21,8 +21,20 @@ kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-accoun
 kafka-topics.sh --bootstrap-server localhost:9092 --create --topic github-commits \
 --partitions 3 --replication-factor 3
  ```
-- github-metrics-total-commits-number - total commits number analyzed
+- metrics topics
 ```
 kafka-topics.sh --bootstrap-server localhost:9092 --create \
---topic github-metrics-total-commits-number --partitions 2 --replication-factor 3
+--topic github-metrics-total-commits --partitions 2 --replication-factor 3
+```
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --create \
+--topic github-metrics-total-committers --partitions 2 --replication-factor 3
+```
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --create \
+--topic github-metrics-top-committers --partitions 2 --replication-factor 3
+```
+```
+kafka-topics.sh --bootstrap-server localhost:9092 --create \
+--topic github-metrics-languages --partitions 2 --replication-factor 3
 ```

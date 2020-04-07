@@ -9,6 +9,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.Topology;
+import org.apache.kafka.streams.kstream.Consumed;
 import org.apache.kafka.streams.kstream.KTable;
 import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
@@ -64,11 +65,12 @@ public class CommittersCounter extends MetricsKafkaStream {
                         Serdes.String(), Serdes.String());
         builder.addStateStore(keyValueStoreBuilder);
 
-        KTable<String, String> committersCount = builder.stream(inputTopic)
+        KTable<String, String> committersCount = builder
+                .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
                 .mapValues((key, value) -> {
                     Commit commit = null;
                     try {
-                        commit = objectMapper.readValue((String) value, Commit.class);
+                        commit = objectMapper.readValue(value, Commit.class);
                     } catch (Exception e) {
                         logger.warn("Cannot read the value - data may be malformed", e);
                     }

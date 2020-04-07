@@ -70,7 +70,8 @@ public class TopFiveCommitters extends MetricsKafkaStream {
 
         KStream<String, String> totalCommitsNumber = builder
                 .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
-                .mapValues((key, value) -> {
+                .transform(() -> new DeduplicateByKeyTransformer(DEDUPLICATE_COMMITS_STORE), DEDUPLICATE_COMMITS_STORE)
+                .selectKey((key, value) -> {
                     Commit commit = null;
                     try {
                         commit = objectMapper.readValue(value, Commit.class);
@@ -79,8 +80,6 @@ public class TopFiveCommitters extends MetricsKafkaStream {
                     }
                     return commit != null ? commit.getAuthor() : null;
                 })
-                .transform(() -> new DeduplicateByKeyTransformer(DEDUPLICATE_COMMITS_STORE), DEDUPLICATE_COMMITS_STORE)
-                .selectKey((key, value) -> value)
                 .groupByKey()
                 .count(Materialized.as(COMMITS_BY_AUTHOR_STORE))
                 .toStream()

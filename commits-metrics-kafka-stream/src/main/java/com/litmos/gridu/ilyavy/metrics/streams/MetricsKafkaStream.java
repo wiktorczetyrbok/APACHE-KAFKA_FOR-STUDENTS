@@ -8,7 +8,7 @@ import org.apache.kafka.streams.Topology;
  */
 public abstract class MetricsKafkaStream {
 
-    public KafkaStreams streams;
+    KafkaStreams streams;
 
     /** Proxies the call to KafkaStreams `start` method. */
     public void start() {

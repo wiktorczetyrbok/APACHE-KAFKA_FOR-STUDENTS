@@ -68,9 +68,7 @@ public class TotalCommitsCounter extends MetricsKafkaStream {
         KTable<String, String> totalCommitsNumber = builder
                 .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.String()))
                 .transform(() -> new DeduplicateByKeyTransformer(TRANSFORMER_STORE), TRANSFORMER_STORE)
-                .selectKey((key, value) -> {
-                    return "total-commits-number";
-                })
+                .selectKey((key, value) -> "total-commits-number")
                 .groupByKey()
                 .count(Materialized.as("TotalCommitsCount"))
                 .mapValues(value -> "total_commits: " + value);
