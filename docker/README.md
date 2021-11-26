@@ -6,7 +6,7 @@ To init the whole environment:
 
 `docker-compose up`
 
-This will bring up all nodes needed for testing (kafka, kafka-connect, ksql, etc). For details check docker-compose.yml. Containers which are not used (like schema registry) can be commented out). All usual ports are exposed outside of docker network so kafka streams application running in IDE can also access them.
+This will bring up all nodes needed for testing (kafka, kafka-connect, ksql, etc). For details check docker-compose.yml. Containers which are not used now (like schema registry) can be commented out. All usual ports are exposed outside of docker network so kafka streams application running in IDE can also access them.
 
  Kafka commands can be run from outside using docker exec.
 
