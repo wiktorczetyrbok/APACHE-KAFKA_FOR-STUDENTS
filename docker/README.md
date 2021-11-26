@@ -1,31 +1,16 @@
 # Optional Docker Instructions
 
-## installing kafka connect plugin
+Optionally docker environment can be used to run the project.
 
-dat source is github api consumed using rest connector
+To init the whole environment:
 
-https://docs.github.com/en/rest/reference/repos#commits
+`docker-compose up`
 
-building the connector and placing in the connectors dir
+This will bring up all nodes needed for testing (kafka, kafka-connect, ksql, etc). For details check docker-compose.yml. Containers which are not used (like schema registry) can be commented out). All usual ports are exposed outside of docker network so kafka streams application running in IDE can also access them.
 
-`mvn clean install && \
-cp kafka-connect-rest-plugin/target/kafka-connect-rest-plugin-*.jar jars`
+ Kafka commands can be run from outside using docker exec.
 
-Jars need to be placed in /usr/share/java/ of kafka-connect docker container
+`docker exec -it kafka kafka-console-consumer --bootstrap-server kafka:9092 --topic github-commits`
 
-## creating kafka connect connector using the plugin with kafka connect api
 
-list available plugins that can be used as connectors:
-
-`curl -s localhost:8083/connector-plugins|jq '.'`
-
-add new connector:
-
-`curl -i -X PUT -H "Content-Type:application/json" http://localhost:8083/connectors/my-github-rest-connector/config -d '{"connector.class":"com.tm.kafka.connect.rest.RestSourceConnector", "rest.source.url":"https://api.github.com/repos/homebrew/homebrew-core/commits?page=1&per_page=1", "value.converter":"org.apache.kafka.connect.json.JsonConverter", "rest.source.destination.topics":"github-commits", "rest.source.poll.interval.ms": "30000", "rest.source.method": "GET"}'`
-
-check the connector's configuration
-```
-curl -i -X GET -H "Content-Type:application/json" http://localhost:8083/connectors/my-github-rest-connector/
-curl -i -X GET -H "Content-Type:application/json" http://localhost:8083/connectors/my-github-rest-connector/pause
-```
 
