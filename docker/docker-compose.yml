@@ -1,6 +1,4 @@
----
 version: '3'
-# Example based on https://github.com/saubury/stream-smarts
 
 services:
   zookeeper:
@@ -10,6 +8,7 @@ services:
       - 2181:2181
     environment:
       TZ: ${TZ_SET}
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
@@ -19,13 +18,11 @@ services:
     depends_on:
       - zookeeper
     ports:
-      # Exposes 9092 for external connections to the broker
-      # Use kafka:29092 for connections internal on the docker network
-      # See https://rmoff.net/2018/08/02/kafka-listeners-explained/ for details
       - '9092:9092'
     environment:
       TZ: ${TZ_SET}
       KAFKA_BROKER_ID: 1
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
@@ -36,7 +33,6 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
       CONFLUENT_METRICS_ENABLE: 'false'
-
 
   schema-registry:
     image: "confluentinc/cp-schema-registry:${CONF_VER}"
@@ -50,6 +46,7 @@ services:
       - ./scripts:/scripts
     environment:
       TZ: ${TZ_SET}
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
       SCHEMA_REGISTRY_AVRO_COMPATIBILITY_LEVEL: "none"
@@ -66,6 +63,7 @@ services:
     ports:
       - "8088:8088"
     environment:
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
       KSQL_LISTENERS: http://0.0.0.0:8088
       KSQL_BOOTSTRAP_SERVERS: kafka:29092
       KSQL_KSQL_CONNECT_URL: http://kafka-connect:8083
@@ -78,7 +76,6 @@ services:
       - ./scripts:/scripts
       - ./ext:/etc/ksql/ext
 
-
   ksqldb-cli:
     image: confluentinc/cp-ksqldb-cli:${KSQLDB_VER}
     container_name: ksqldb-cli
@@ -89,8 +86,6 @@ services:
       - ./user_profile_pretty.ksql:/user_profile_pretty.ksql
     entrypoint: /bin/sh
     tty: true
-
-
 
   kafka-connect:
     container_name: kafka-connect
@@ -103,6 +98,7 @@ services:
       - '8083:8083'
     environment:
       TZ: ${TZ_SET}
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
       CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
       CONNECT_REST_PORT: 8083
       CONNECT_GROUP_ID: compose-connect-group
@@ -125,28 +121,16 @@ services:
       - ./container-data/kafka-connect/kafka-connect-rest:/usr/share/java/kafka-connect-rest
       #   - ./confluentinc-kafka-connect-mqtt:/usr/share/java/confluentinc-kafka-connect-mqtt
 
-  postgres:
-    container_name: postgres
-    image: 'postgres:${PG_VER}'
-    hostname: postgres
+  akhq:
+    image: tchiotludo/akhq
+    container_name: akhq
     ports:
-      - "5432:5432"
+      - 8089:8080
     environment:
-      TZ: ${TZ_SET}
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_SRC_PASSWORD}
-      POSTGRES_DB: postgres
-    #    PGDATA: /var/lib/postgresql/data/pgdata
-    volumes:
-      - ./postgres-setup.sql:/postgres-setup.sql
-
-  spring-boot:
-    image: openjdk:alpine
-    hostname: spring-boot
-    networks:
-      - default
-    ports:
-      - "8080:28080"
-    volumes:
-      - ${PWD}/build/libs:/tmp
-    command: ["java", "-jar", "/tmp/*.jar"]
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            my-cluster:
+              properties:
+                bootstrap.servers: "kafka:29092"
