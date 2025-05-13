@@ -12,9 +12,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
 
-  kafka:
+  kafka1:
     image: "confluentinc/cp-enterprise-kafka:${CONF_VER}"
-    container_name: kafka
+    container_name: kafka1
     depends_on:
       - zookeeper
     ports:
@@ -26,7 +26,54 @@ services:
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
+      CONFLUENT_METRICS_ENABLE: 'false'
+
+  kafka2:
+    image: "confluentinc/cp-enterprise-kafka:${CONF_VER}"
+    container_name: kafka2
+    depends_on:
+      - zookeeper
+    ports:
+      - '9095:9095'
+    environment:
+      TZ: ${TZ_SET}
+      KAFKA_BROKER_ID: 2
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29095,PLAINTEXT_HOST://localhost:9095
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29095,PLAINTEXT_HOST://0.0.0.0:9095
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 100
+      CONFLUENT_METRICS_ENABLE: 'false'
+
+  kafka3:
+    image: "confluentinc/cp-enterprise-kafka:${CONF_VER}"
+    container_name: kafka3
+    depends_on:
+      - zookeeper
+    ports:
+      - '9098:9098'
+    environment:
+      TZ: ${TZ_SET}
+      KAFKA_BROKER_ID: 3
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:29098,PLAINTEXT_HOST://localhost:9098
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29098,PLAINTEXT_HOST://0.0.0.0:9098
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
@@ -41,7 +88,9 @@ services:
       - 8081:8081
     depends_on:
       - zookeeper
-      - kafka
+      - kafka1
+      - kafka2
+      - kafka3
     volumes:
       - ./scripts:/scripts
     environment:
@@ -54,10 +103,11 @@ services:
 
   ksqldb-server:
     image: confluentinc/cp-ksqldb-server:${KSQLDB_VER}
-    hostname: ksqldb-server
     container_name: ksqldb-server
     depends_on:
-      - kafka
+      - kafka1
+      - kafka2
+      - kafka3
       - kafka-connect
       - schema-registry
     ports:
@@ -65,7 +115,7 @@ services:
     environment:
       KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
       KSQL_LISTENERS: http://0.0.0.0:8088
-      KSQL_BOOTSTRAP_SERVERS: kafka:29092
+      KSQL_BOOTSTRAP_SERVERS: kafka1:29092,kafka2:29095,kafka3:29098
       KSQL_KSQL_CONNECT_URL: http://kafka-connect:8083
       KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       KSQL_KSQL_LOGGING_PROCESSING_STREAM_AUTO_CREATE: "true"
@@ -80,7 +130,9 @@ services:
     image: confluentinc/cp-ksqldb-cli:${KSQLDB_VER}
     container_name: ksqldb-cli
     depends_on:
-      - kafka
+      - kafka1
+      - kafka2
+      - kafka3
       - ksqldb-server
     volumes:
       - ./user_profile_pretty.ksql:/user_profile_pretty.ksql
@@ -92,14 +144,16 @@ services:
     image: confluentinc/cp-kafka-connect:${CONNECT_VER}
     depends_on:
       - zookeeper
-      - kafka
+      - kafka1
+      - kafka2
+      - kafka3
       - schema-registry
     ports:
       - '8083:8083'
     environment:
       TZ: ${TZ_SET}
       KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote=false"
-      CONNECT_BOOTSTRAP_SERVERS: "kafka:29092"
+      CONNECT_BOOTSTRAP_SERVERS: "kafka1:29092,kafka2:29095,kafka3:29098"
       CONNECT_REST_PORT: 8083
       CONNECT_GROUP_ID: compose-connect-group
       CONNECT_CONFIG_STORAGE_TOPIC: docker-connect-configs
@@ -119,7 +173,6 @@ services:
       CONNECT_CONFLUENT_TOPIC_REPLICATION_FACTOR: 1
     volumes:
       - ./container-data/kafka-connect/kafka-connect-rest:/usr/share/java/kafka-connect-rest
-      #   - ./confluentinc-kafka-connect-mqtt:/usr/share/java/confluentinc-kafka-connect-mqtt
 
   akhq:
     image: tchiotludo/akhq
@@ -133,4 +186,4 @@ services:
           connections:
             my-cluster:
               properties:
-                bootstrap.servers: "kafka:29092"
+                bootstrap.servers: "kafka1:29092,kafka2:29095,kafka3:29098"
