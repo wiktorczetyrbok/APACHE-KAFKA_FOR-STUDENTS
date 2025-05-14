@@ -1,0 +1,53 @@
+-- 1. Map the raw JSON structure
+CREATE OR REPLACE STREAM COMMITS_DATA_1STR (
+  author VARCHAR,
+  dateTimeUtc VARCHAR,
+  language VARCHAR,
+  sha VARCHAR,
+  message VARCHAR,
+  repositoryFullName VARCHAR
+) WITH (
+  kafka_topic = 'github-commits',
+  value_format = 'json',
+  partitions = 3
+);
+
+-- 2. Total number of commits per day
+CREATE OR REPLACE STREAM COMMITS_DATA_BY_DAY AS
+SELECT TIMESTAMPTOSTRING(PARSE_DATE(dateTimeUtc, 'yyyy-MM-dd''T''HH:mm:ss'), 'yyyy-MM-dd') AS commit_day,
+       sha
+FROM COMMITS_DATA_1STR
+EMIT CHANGES;
+
+CREATE TABLE TOTAL_COMMITS_BY_DAY AS
+SELECT commit_day, COUNT(*) AS total_commits
+FROM COMMITS_DATA_BY_DAY
+GROUP BY commit_day
+EMIT CHANGES;
+
+-- 3. Total unique committers
+CREATE OR REPLACE STREAM COMMITTERS_STREAM AS
+SELECT author, sha
+FROM COMMITS_DATA_1STR
+EMIT CHANGES;
+
+CREATE TABLE TOTAL_COMMITTERS AS
+SELECT 'all' AS dummy_key, COUNT_DISTINCT(author) AS unique_committers
+FROM COMMITTERS_STREAM
+GROUP BY 'all'
+EMIT CHANGES;
+
+-- 4. Commits per programming language
+CREATE TABLE COMMITS_PER_LANGUAGE AS
+SELECT language, COUNT(*) AS total
+FROM COMMITS_DATA_1STR
+GROUP BY language
+EMIT CHANGES;
+
+-- 5. Top 5 committers by count
+CREATE TABLE COMMITS_PER_AUTHOR AS
+SELECT author, COUNT(*) AS commit_count
+FROM COMMITS_DATA_1STR
+GROUP BY author
+EMIT CHANGES;
+
