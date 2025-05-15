@@ -14,7 +14,7 @@ CREATE OR REPLACE STREAM COMMITS_DATA_1STR (
 
 -- 2. Total number of commits per day
 CREATE OR REPLACE STREAM COMMITS_DATA_BY_DAY AS
-SELECT TIMESTAMPTOSTRING(PARSE_DATE(dateTimeUtc, 'yyyy-MM-dd''T''HH:mm:ss'), 'yyyy-MM-dd') AS commit_day,
+SELECT SUBSTRING(dateTimeUtc, 1, 10) AS commit_day,
        sha
 FROM COMMITS_DATA_1STR
 EMIT CHANGES;
@@ -44,6 +44,15 @@ FROM COMMITS_DATA_1STR
 GROUP BY language
 EMIT CHANGES;
 
+CREATE TABLE COMMITS_PER_LANGUAGE_COMPACTED WITH (
+  KAFKA_TOPIC = 'github-metrics-languages-compacted',
+  VALUE_FORMAT = 'json'
+) AS
+SELECT language, COUNT(*) AS total
+FROM COMMITS_DATA_1STR
+GROUP BY language
+EMIT CHANGES;
+
 -- 5. Top 5 committers by count
 CREATE TABLE COMMITS_PER_AUTHOR AS
 SELECT author, COUNT(*) AS commit_count
@@ -51,3 +60,36 @@ FROM COMMITS_DATA_1STR
 GROUP BY author
 EMIT CHANGES;
 
+CREATE TABLE TOP_5_COMMITTERS AS
+SELECT author, commit_count
+FROM COMMITS_PER_AUTHOR
+EMIT CHANGES
+LIMIT 5;
+
+
+-- Commits Per Repository
+CREATE TABLE COMMITS_PER_REPO AS
+SELECT repositoryFullName, COUNT(*) AS total_commits
+FROM COMMITS_DATA_1STR
+GROUP BY repositoryFullName
+EMIT CHANGES;
+
+
+-- Hourly Commit Distribution
+
+CREATE TABLE COMMITS_BY_HOUR AS
+SELECT SUBSTRING(dateTimeUtc, 12, 2) AS commit_hour,
+       COUNT(*) AS total
+FROM COMMITS_DATA_1STR
+GROUP BY SUBSTRING(dateTimeUtc, 12, 2)
+EMIT CHANGES;
+
+
+-- Bugifix commits
+CREATE TABLE BUGFIX_COMMITS AS
+SELECT 'all' AS dummy_key,
+       COUNT(*) AS bugfix_commits
+FROM COMMITS_DATA_1STR
+WHERE LCASE(message) LIKE '%fix%' OR LCASE(message) LIKE '%bug%'
+GROUP BY 'all'
+EMIT CHANGES;
